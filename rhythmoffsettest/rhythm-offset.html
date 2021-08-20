@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./style.css">
+    <title>Rhythm Game offset tester</title>
+</head>
+<body>
+    <h1><b>Rhythm Game offset tester</b></h1>
+    <p>Click the start button, then wait until it says go and tap any key, any time a square is lit up. After around 10 tries of this you'll get your average offset</p>
+    <p>(Still a beta version)</p>
+
+    <div class="box-wrapper">
+        <div class="flashy-box"></div>
+        <div class="flashy-box"></div>
+        <div class="flashy-box"></div>
+        <div class="flashy-box"></div>
+    </div>
+
+    <div id="button-wrap">
+        <button id="start-test">Start</button>
+    </div>
+    <p><b>Get ready in:</b> <span id="ready-no"></span></p>
+    <p id="offset-txt">Offset: <span id="offset-span">_</span> ms</p>
+    <script src="./scripts.js"></script>
+</body>
+</html>
