@@ -912,7 +912,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "214";
+	app.meta.h["build"] = "3";
 	app.meta.h["company"] = "HaxeFlixel";
 	app.meta.h["file"] = "ShaderPlayground";
 	app.meta.h["name"] = "ShaderPlayground";
@@ -5768,7 +5768,6 @@ MyOFLTextField.prototype = $extend(openfl_text_TextField.prototype,{
 		case 37:
 			var pos = this.get_caretIndex() - 1 >= 0 ? this.get_caretIndex() - 1 : 0;
 			this.setSelection(pos,pos);
-			haxe_Log.trace(this.get_caretIndex(),{ fileName : "source/PlayState.hx", lineNumber : 45, className : "MyOFLTextField", methodName : "this_onKeyDown"});
 			break;
 		case 38:
 			this._moveUp();
@@ -6645,10 +6644,6 @@ PlayState.prototype = $extend(flixel_FlxState.prototype,{
 		flixel_FlxG.addChildBelowMouse(this.script_textarea);
 	}
 	,handleButtonClick: function() {
-		haxe_Log.trace("[DEBUG] shader source:",{ fileName : "source/PlayState.hx", lineNumber : 180, className : "PlayState", methodName : "handleButtonClick"});
-		haxe_Log.trace(haxe_io_Bytes.ofString(this.shadersrc_textarea.get_text()),{ fileName : "source/PlayState.hx", lineNumber : 181, className : "PlayState", methodName : "handleButtonClick"});
-		haxe_Log.trace("[DEBUG] script:",{ fileName : "source/PlayState.hx", lineNumber : 182, className : "PlayState", methodName : "handleButtonClick"});
-		haxe_Log.trace(haxe_io_Bytes.ofString(this.script_textarea.get_text()),{ fileName : "source/PlayState.hx", lineNumber : 183, className : "PlayState", methodName : "handleButtonClick"});
 		flixel_FlxG.save.data.shadersrc = this.shadersrc_textarea.get_text();
 		flixel_FlxG.save.data.scriptsrc = this.script_textarea.get_text();
 		flixel_FlxG.save.flush();
@@ -6658,7 +6653,6 @@ PlayState.prototype = $extend(flixel_FlxState.prototype,{
 		var ast = this.parser.parseString(this.script_textarea.get_text());
 		this.interpreter.variables.h["shader"] = newshader;
 		var result = this.interpreter.execute(ast);
-		haxe_Log.trace("[DEBUG] result: " + result,{ fileName : "source/PlayState.hx", lineNumber : 197, className : "PlayState", methodName : "handleButtonClick"});
 		var execute = this.interpreter.variables.h["execute"];
 		if(execute != null) {
 			execute();
@@ -73341,7 +73335,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 559004;
+	this.version = 716915;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
