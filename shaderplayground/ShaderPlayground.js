@@ -912,7 +912,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "3";
+	app.meta.h["build"] = "4";
 	app.meta.h["company"] = "HaxeFlixel";
 	app.meta.h["file"] = "ShaderPlayground";
 	app.meta.h["name"] = "ShaderPlayground";
@@ -6577,10 +6577,13 @@ PlayState.prototype = $extend(flixel_FlxState.prototype,{
 	,script_textarea: null
 	,compileshaderbtn: null
 	,saveclearbtn: null
+	,downloadcodebtn: null
+	,loadcodebtn: null
 	,testsprite: null
 	,shapeshader: null
 	,parser: null
 	,interpreter: null
+	,_download_fileref: null
 	,vsrc: null
 	,add_shadersrc_label: function() {
 		var label = new flixel_text_FlxText(0,0,0,"Shader Source:",12);
@@ -6602,7 +6605,7 @@ PlayState.prototype = $extend(flixel_FlxState.prototype,{
 		var fh = this.shadersrc_textarea;
 		fh.set_y(fh.get_y() + (label.y + label.get_height()));
 		this.shadersrc_textarea.set_width(flixel_FlxG.width / 2);
-		this.shadersrc_textarea.set_height(flixel_FlxG.height / 2 - label.get_height());
+		this.shadersrc_textarea.set_height(flixel_FlxG.height / 2 - label.get_height() - 100);
 		this.fillBoilerPlateShaderSource();
 		flixel_FlxG.addChildBelowMouse(this.shadersrc_textarea);
 	}
@@ -6643,10 +6646,13 @@ PlayState.prototype = $extend(flixel_FlxState.prototype,{
 		this.fillBoilerPlateScript();
 		flixel_FlxG.addChildBelowMouse(this.script_textarea);
 	}
-	,handleButtonClick: function() {
+	,saveAllCode: function() {
 		flixel_FlxG.save.data.shadersrc = this.shadersrc_textarea.get_text();
 		flixel_FlxG.save.data.scriptsrc = this.script_textarea.get_text();
 		flixel_FlxG.save.flush();
+	}
+	,handleButtonClick: function() {
+		this.saveAllCode();
 		var newshader = new openfl_display_Shader();
 		newshader.set_glVertexSource(this.vsrc);
 		newshader.set_glFragmentSource(this.shadersrc_textarea.get_text());
@@ -6708,7 +6714,7 @@ PlayState.prototype = $extend(flixel_FlxState.prototype,{
 		this.add(this.saveclearbtn);
 	}
 	,put_disclaimer_text: function() {
-		var disclaimer = new flixel_text_FlxText(this.saveclearbtn.x + this.saveclearbtn.get_width() + 5,this.saveclearbtn.y,300,"P.S: If the program crashes, just reload the page.",10);
+		var disclaimer = new flixel_text_FlxText(0,this.loadcodebtn.y + this.loadcodebtn.get_height(),500,"P.S: If the program crashes, just reload the page.",10);
 		disclaimer.set_text(disclaimer.text + " All your code is saved every time you click the compile button");
 		disclaimer.setFormat("Consolas",15,-1);
 		disclaimer.updateHitbox();
@@ -6738,6 +6744,101 @@ PlayState.prototype = $extend(flixel_FlxState.prototype,{
 		this.interpreter.variables.h["asset_gf"] = "assets/images/gf.png";
 		this.interpreter.variables.h["asset_dad"] = "assets/images/dadsprite.png";
 	}
+	,onSaveComplete: function(_) {
+		this._download_fileref.removeEventListener("complete",$bind(this,this.onSaveComplete));
+		this._download_fileref.removeEventListener("cancel",$bind(this,this.onSaveCancel));
+		this._download_fileref.removeEventListener("ioError",$bind(this,this.onSaveError));
+		this._download_fileref = null;
+	}
+	,onSaveCancel: function(_) {
+		this._download_fileref.removeEventListener("complete",$bind(this,this.onSaveComplete));
+		this._download_fileref.removeEventListener("cancel",$bind(this,this.onSaveCancel));
+		this._download_fileref.removeEventListener("ioError",$bind(this,this.onSaveError));
+		this._download_fileref = null;
+	}
+	,onSaveError: function(_) {
+		this._download_fileref.removeEventListener("complete",$bind(this,this.onSaveComplete));
+		this._download_fileref.removeEventListener("cancel",$bind(this,this.onSaveCancel));
+		this._download_fileref.removeEventListener("ioError",$bind(this,this.onSaveError));
+		this._download_fileref = null;
+	}
+	,download_code_stuff: function() {
+		var json = { shadercode : this.shadersrc_textarea.get_text(), scriptcode : this.script_textarea.get_text()};
+		var data = JSON.stringify(json,null," ");
+		if(data != null && data.length > 0) {
+			this._download_fileref = new openfl_net_FileReference();
+			this._download_fileref.addEventListener("complete",$bind(this,this.onSaveComplete));
+			this._download_fileref.addEventListener("cancel",$bind(this,this.onSaveCancel));
+			this._download_fileref.addEventListener("ioError",$bind(this,this.onSaveError));
+			this._download_fileref.save(StringTools.trim(data),"ShaderPlayground_Code.json");
+		}
+	}
+	,make_download_code_btn: function() {
+		this.downloadcodebtn = new flixel_ui_FlxButton(this.saveclearbtn.x + this.saveclearbtn.get_width() + 5,this.saveclearbtn.y,"Download Current code",$bind(this,this.download_code_stuff));
+		this.downloadcodebtn.setGraphicSize(this.downloadcodebtn.get_width() | 0,85);
+		this.downloadcodebtn.updateHitbox();
+		var _g = 0;
+		var _g1 = this.downloadcodebtn.labelOffsets.length;
+		while(_g < _g1) {
+			var i = _g++;
+			var _this = this.downloadcodebtn.labelOffsets[i];
+			var X = 0;
+			var Y = 20;
+			if(Y == null) {
+				Y = 0;
+			}
+			if(X == null) {
+				X = 0;
+			}
+			_this.set_x(_this.x + X);
+			_this.set_y(_this.y + Y);
+		}
+		this.downloadcodebtn.label.setFormat(null,10,-16777216);
+		this.add(this.downloadcodebtn);
+	}
+	,startLoad: function(_) {
+		this._download_fileref.load();
+	}
+	,onLoadComplete: function(_) {
+		var jsonstring = this._download_fileref.data.toString();
+		if(jsonstring != null && jsonstring.length > 0) {
+			var code_state = JSON.parse(jsonstring);
+			this.shadersrc_textarea.set_text(code_state.shadercode);
+			this.script_textarea.set_text(code_state.scriptcode);
+		}
+		this._download_fileref.removeEventListener("select",$bind(this,this.startLoad));
+		this._download_fileref.removeEventListener("complete",$bind(this,this.onLoadComplete));
+		this._download_fileref = null;
+	}
+	,loadCodeFromJson: function() {
+		this._download_fileref = new openfl_net_FileReference();
+		this._download_fileref.addEventListener("select",$bind(this,this.startLoad));
+		this._download_fileref.addEventListener("complete",$bind(this,this.onLoadComplete));
+		this._download_fileref.browse([new openfl_net_FileFilter("ShaderPlayground json files","*.json")]);
+	}
+	,make_load_code_btn: function() {
+		this.loadcodebtn = new flixel_ui_FlxButton(this.downloadcodebtn.x + this.downloadcodebtn.get_width() + 5,this.downloadcodebtn.y,"Load code from Json",$bind(this,this.loadCodeFromJson));
+		this.loadcodebtn.setGraphicSize(this.loadcodebtn.get_width() | 0,85);
+		this.loadcodebtn.updateHitbox();
+		var _g = 0;
+		var _g1 = this.loadcodebtn.labelOffsets.length;
+		while(_g < _g1) {
+			var i = _g++;
+			var _this = this.loadcodebtn.labelOffsets[i];
+			var X = 0;
+			var Y = 20;
+			if(Y == null) {
+				Y = 0;
+			}
+			if(X == null) {
+				X = 0;
+			}
+			_this.set_x(_this.x + X);
+			_this.set_y(_this.y + Y);
+		}
+		this.loadcodebtn.label.setFormat(null,10,-16777216);
+		this.add(this.loadcodebtn);
+	}
 	,create: function() {
 		flixel_FlxState.prototype.create.call(this);
 		flixel_FlxG.sound.muteKeys = flixel_FlxG.sound.volumeDownKeys = flixel_FlxG.sound.volumeUpKeys = null;
@@ -6745,6 +6846,8 @@ PlayState.prototype = $extend(flixel_FlxState.prototype,{
 		this.script_textarea_init();
 		this.make_compile_btn();
 		this.make_save_clear_btn();
+		this.make_download_code_btn();
+		this.make_load_code_btn();
 		this.put_disclaimer_text();
 		this.shapeshader = new openfl_display_Shader();
 		this.shapeshader.set_glVertexSource(this.vsrc);
@@ -12918,7 +13021,6 @@ var flixel_FlxGame = function(GameWidth,GameHeight,InitialState,Zoom,UpdateFrame
 	}
 	this._resetGame = false;
 	this._skipSplash = false;
-	this._customFocusLostScreen = flixel_system_ui_FlxFocusLostScreen;
 	this._customSoundTray = flixel_system_ui_FlxSoundTray;
 	this._lostFocus = false;
 	this._startTime = 0;
@@ -12963,10 +13065,8 @@ flixel_FlxGame.prototype = $extend(openfl_display_Sprite.prototype,{
 	,_maxAccumulation: null
 	,_lostFocus: null
 	,_filters: null
-	,_focusLostScreen: null
 	,_inputContainer: null
 	,_customSoundTray: null
-	,_customFocusLostScreen: null
 	,_skipSplash: null
 	,_requestedState: null
 	,_resetGame: null
@@ -12986,8 +13086,6 @@ flixel_FlxGame.prototype = $extend(openfl_display_Sprite.prototype,{
 		this.addChild(this._inputContainer);
 		this.soundTray = Type.createInstance(this._customSoundTray,[]);
 		this.addChild(this.soundTray);
-		this._focusLostScreen = Type.createInstance(this._customFocusLostScreen,[]);
-		this.addChild(this._focusLostScreen);
 		this.stage.addEventListener("deactivate",$bind(this,this.onFocusLost));
 		this.stage.addEventListener("activate",$bind(this,this.onFocus));
 		flixel_FlxG.signals.preGameReset.dispatch();
@@ -13017,9 +13115,6 @@ flixel_FlxGame.prototype = $extend(openfl_display_Sprite.prototype,{
 		if(!flixel_FlxG.autoPause) {
 			return;
 		}
-		if(this._focusLostScreen != null) {
-			this._focusLostScreen.set_visible(false);
-		}
 		this.stage.set_frameRate(flixel_FlxG.drawFramerate);
 		flixel_FlxG.sound.onFocus();
 		var _g = 0;
@@ -13036,9 +13131,6 @@ flixel_FlxGame.prototype = $extend(openfl_display_Sprite.prototype,{
 		this._state.onFocusLost();
 		if(!flixel_FlxG.autoPause) {
 			return;
-		}
-		if(this._focusLostScreen != null) {
-			this._focusLostScreen.set_visible(true);
 		}
 		this.stage.set_frameRate(this.focusLostFramerate);
 		flixel_FlxG.sound.onFocusLost();
@@ -13063,9 +13155,6 @@ flixel_FlxGame.prototype = $extend(openfl_display_Sprite.prototype,{
 		this._state.onResize(width,height);
 		flixel_FlxG.cameras.resize();
 		flixel_FlxG.signals.gameResized.dispatch(width,height);
-		if(this._focusLostScreen != null) {
-			this._focusLostScreen.draw();
-		}
 		if(this.soundTray != null) {
 			this.soundTray.screenCenter();
 		}
@@ -39527,44 +39616,6 @@ flixel_system_replay_MouseRecord.prototype = {
 	,wheel: null
 	,__class__: flixel_system_replay_MouseRecord
 };
-var flixel_system_ui_FlxFocusLostScreen = function() {
-	openfl_display_Sprite.call(this);
-	this.draw();
-	var logo = new openfl_display_Sprite();
-	flixel_system_FlxAssets.drawLogo(logo.get_graphics());
-	logo.set_scaleX(logo.set_scaleY(0.2));
-	logo.set_x(logo.set_y(5));
-	logo.set_alpha(0.35);
-	this.addChild(logo);
-	this.set_visible(false);
-};
-$hxClasses["flixel.system.ui.FlxFocusLostScreen"] = flixel_system_ui_FlxFocusLostScreen;
-flixel_system_ui_FlxFocusLostScreen.__name__ = "flixel.system.ui.FlxFocusLostScreen";
-flixel_system_ui_FlxFocusLostScreen.__super__ = openfl_display_Sprite;
-flixel_system_ui_FlxFocusLostScreen.prototype = $extend(openfl_display_Sprite.prototype,{
-	draw: function() {
-		var gfx = this.get_graphics();
-		var screenWidth = openfl_Lib.get_current().stage.stageWidth | 0;
-		var screenHeight = openfl_Lib.get_current().stage.stageHeight | 0;
-		gfx.clear();
-		gfx.moveTo(0,0);
-		gfx.beginFill(0,0.5);
-		gfx.drawRect(0,0,screenWidth,screenHeight);
-		gfx.endFill();
-		var halfWidth = screenWidth / 2 | 0;
-		var halfHeight = screenHeight / 2 | 0;
-		var helper = Math.min(halfWidth,halfHeight) / 3 | 0;
-		gfx.moveTo(halfWidth - helper,halfHeight - helper);
-		gfx.beginFill(16777215,0.65);
-		gfx.lineTo(halfWidth + helper,halfHeight);
-		gfx.lineTo(halfWidth - helper,halfHeight + helper);
-		gfx.lineTo(halfWidth - helper,halfHeight - helper);
-		gfx.endFill();
-		this.set_x(-flixel_FlxG.scaleMode.offset.x);
-		this.set_y(-flixel_FlxG.scaleMode.offset.y);
-	}
-	,__class__: flixel_system_ui_FlxFocusLostScreen
-});
 var flixel_system_ui_FlxSoundTray = function() {
 	this._defaultScale = 2.0;
 	this._width = 80;
@@ -51888,6 +51939,11 @@ var haxe_io_Path = function(path) {
 };
 $hxClasses["haxe.io.Path"] = haxe_io_Path;
 haxe_io_Path.__name__ = "haxe.io.Path";
+haxe_io_Path.withoutDirectory = function(path) {
+	var s = new haxe_io_Path(path);
+	s.dir = null;
+	return s.toString();
+};
 haxe_io_Path.directory = function(path) {
 	var s = new haxe_io_Path(path);
 	if(s.dir == null) {
@@ -51895,11 +51951,21 @@ haxe_io_Path.directory = function(path) {
 	}
 	return s.dir;
 };
+haxe_io_Path.extension = function(path) {
+	var s = new haxe_io_Path(path);
+	if(s.ext == null) {
+		return "";
+	}
+	return s.ext;
+};
 haxe_io_Path.prototype = {
 	dir: null
 	,file: null
 	,ext: null
 	,backslash: null
+	,toString: function() {
+		return (this.dir == null ? "" : this.dir + (this.backslash ? "\\" : "/")) + this.file + (this.ext == null ? "" : "." + this.ext);
+	}
 	,__class__: haxe_io_Path
 };
 var haxe_iterators_ArrayIterator = function(array) {
@@ -63553,6 +63619,89 @@ lime_app_Promise.prototype = {
 	,__class__: lime_app_Promise
 	,__properties__: {get_isError:"get_isError",get_isComplete:"get_isComplete"}
 };
+var lime_app__$Event_$Array_$String_$_$Void = function() {
+	this.canceled = false;
+	this.__listeners = [];
+	this.__priorities = [];
+	this.__repeat = [];
+};
+$hxClasses["lime.app._Event_Array_String__Void"] = lime_app__$Event_$Array_$String_$_$Void;
+lime_app__$Event_$Array_$String_$_$Void.__name__ = "lime.app._Event_Array_String__Void";
+lime_app__$Event_$Array_$String_$_$Void.prototype = {
+	canceled: null
+	,__repeat: null
+	,__priorities: null
+	,add: function(listener,once,priority) {
+		if(priority == null) {
+			priority = 0;
+		}
+		if(once == null) {
+			once = false;
+		}
+		var _g = 0;
+		var _g1 = this.__priorities.length;
+		while(_g < _g1) {
+			var i = _g++;
+			if(priority > this.__priorities[i]) {
+				this.__listeners.splice(i,0,listener);
+				this.__priorities.splice(i,0,priority);
+				this.__repeat.splice(i,0,!once);
+				return;
+			}
+		}
+		this.__listeners.push(listener);
+		this.__priorities.push(priority);
+		this.__repeat.push(!once);
+	}
+	,cancel: function() {
+		this.canceled = true;
+	}
+	,has: function(listener) {
+		var _g = 0;
+		var _g1 = this.__listeners;
+		while(_g < _g1.length) {
+			var l = _g1[_g];
+			++_g;
+			if(Reflect.compareMethods(l,listener)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	,remove: function(listener) {
+		var i = this.__listeners.length;
+		while(--i >= 0) if(Reflect.compareMethods(this.__listeners[i],listener)) {
+			this.__listeners.splice(i,1);
+			this.__priorities.splice(i,1);
+			this.__repeat.splice(i,1);
+		}
+	}
+	,removeAll: function() {
+		var len = this.__listeners.length;
+		this.__listeners.splice(0,len);
+		this.__priorities.splice(0,len);
+		this.__repeat.splice(0,len);
+	}
+	,__listeners: null
+	,dispatch: function(a) {
+		this.canceled = false;
+		var listeners = this.__listeners;
+		var repeat = this.__repeat;
+		var i = 0;
+		while(i < listeners.length) {
+			listeners[i](a);
+			if(!repeat[i]) {
+				this.remove(listeners[i]);
+			} else {
+				++i;
+			}
+			if(this.canceled) {
+				break;
+			}
+		}
+	}
+	,__class__: lime_app__$Event_$Array_$String_$_$Void
+};
 var lime_app__$Event_$Dynamic_$Void = function() {
 	this.canceled = false;
 	this.__listeners = [];
@@ -65378,6 +65527,89 @@ lime_app__$Event_$lime_$ui_$Window_$Void.prototype = {
 		}
 	}
 	,__class__: lime_app__$Event_$lime_$ui_$Window_$Void
+};
+var lime_app__$Event_$lime_$utils_$Resource_$Void = function() {
+	this.canceled = false;
+	this.__listeners = [];
+	this.__priorities = [];
+	this.__repeat = [];
+};
+$hxClasses["lime.app._Event_lime_utils_Resource_Void"] = lime_app__$Event_$lime_$utils_$Resource_$Void;
+lime_app__$Event_$lime_$utils_$Resource_$Void.__name__ = "lime.app._Event_lime_utils_Resource_Void";
+lime_app__$Event_$lime_$utils_$Resource_$Void.prototype = {
+	canceled: null
+	,__repeat: null
+	,__priorities: null
+	,add: function(listener,once,priority) {
+		if(priority == null) {
+			priority = 0;
+		}
+		if(once == null) {
+			once = false;
+		}
+		var _g = 0;
+		var _g1 = this.__priorities.length;
+		while(_g < _g1) {
+			var i = _g++;
+			if(priority > this.__priorities[i]) {
+				this.__listeners.splice(i,0,listener);
+				this.__priorities.splice(i,0,priority);
+				this.__repeat.splice(i,0,!once);
+				return;
+			}
+		}
+		this.__listeners.push(listener);
+		this.__priorities.push(priority);
+		this.__repeat.push(!once);
+	}
+	,cancel: function() {
+		this.canceled = true;
+	}
+	,has: function(listener) {
+		var _g = 0;
+		var _g1 = this.__listeners;
+		while(_g < _g1.length) {
+			var l = _g1[_g];
+			++_g;
+			if(Reflect.compareMethods(l,listener)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	,remove: function(listener) {
+		var i = this.__listeners.length;
+		while(--i >= 0) if(Reflect.compareMethods(this.__listeners[i],listener)) {
+			this.__listeners.splice(i,1);
+			this.__priorities.splice(i,1);
+			this.__repeat.splice(i,1);
+		}
+	}
+	,removeAll: function() {
+		var len = this.__listeners.length;
+		this.__listeners.splice(0,len);
+		this.__priorities.splice(0,len);
+		this.__repeat.splice(0,len);
+	}
+	,__listeners: null
+	,dispatch: function(a) {
+		this.canceled = false;
+		var listeners = this.__listeners;
+		var repeat = this.__repeat;
+		var i = 0;
+		while(i < listeners.length) {
+			listeners[i](a);
+			if(!repeat[i]) {
+				this.remove(listeners[i]);
+			} else {
+				++i;
+			}
+			if(this.canceled) {
+				break;
+			}
+		}
+	}
+	,__class__: lime_app__$Event_$lime_$utils_$Resource_$Void
 };
 var lime_app__$Event_$ofEvents_$T_$Void = function() {
 	this.canceled = false;
@@ -71832,6 +72064,56 @@ lime_net__$HTTPRequest_$openfl_$utils_$ByteArray.prototype = $extend(lime_net__$
 	}
 	,__class__: lime_net__$HTTPRequest_$openfl_$utils_$ByteArray
 });
+var lime_system_BackgroundWorker = function() {
+	this.onProgress = new lime_app__$Event_$Dynamic_$Void();
+	this.onError = new lime_app__$Event_$Dynamic_$Void();
+	this.onComplete = new lime_app__$Event_$Dynamic_$Void();
+	this.doWork = new lime_app__$Event_$Dynamic_$Void();
+};
+$hxClasses["lime.system.BackgroundWorker"] = lime_system_BackgroundWorker;
+lime_system_BackgroundWorker.__name__ = "lime.system.BackgroundWorker";
+lime_system_BackgroundWorker.prototype = {
+	canceled: null
+	,completed: null
+	,doWork: null
+	,onComplete: null
+	,onError: null
+	,onProgress: null
+	,__runMessage: null
+	,cancel: function() {
+		this.canceled = true;
+	}
+	,run: function(message) {
+		this.canceled = false;
+		this.completed = false;
+		this.__runMessage = message;
+		this.__doWork();
+	}
+	,sendComplete: function(message) {
+		this.completed = true;
+		if(!this.canceled) {
+			this.canceled = true;
+			this.onComplete.dispatch(message);
+		}
+	}
+	,sendError: function(message) {
+		if(!this.canceled) {
+			this.canceled = true;
+			this.onError.dispatch(message);
+		}
+	}
+	,sendProgress: function(message) {
+		if(!this.canceled) {
+			this.onProgress.dispatch(message);
+		}
+	}
+	,__doWork: function() {
+		this.doWork.dispatch(this.__runMessage);
+	}
+	,__update: function(deltaTime) {
+	}
+	,__class__: lime_system_BackgroundWorker
+};
 var lime_system_CFFI = function() { };
 $hxClasses["lime.system.CFFI"] = lime_system_CFFI;
 lime_system_CFFI.__name__ = "lime.system.CFFI";
@@ -72627,6 +72909,70 @@ lime_text_harfbuzz_HBSegmentProperties.__name__ = "lime.text.harfbuzz.HBSegmentP
 lime_text_harfbuzz_HBSegmentProperties.prototype = {
 	__class__: lime_text_harfbuzz_HBSegmentProperties
 };
+var lime_ui_FileDialog = function() {
+	this.onSelectMultiple = new lime_app__$Event_$Array_$String_$_$Void();
+	this.onSelect = new lime_app__$Event_$String_$Void();
+	this.onSave = new lime_app__$Event_$String_$Void();
+	this.onOpen = new lime_app__$Event_$lime_$utils_$Resource_$Void();
+	this.onCancel = new lime_app__$Event_$Void_$Void();
+};
+$hxClasses["lime.ui.FileDialog"] = lime_ui_FileDialog;
+lime_ui_FileDialog.__name__ = "lime.ui.FileDialog";
+lime_ui_FileDialog.prototype = {
+	onCancel: null
+	,onOpen: null
+	,onSave: null
+	,onSelect: null
+	,onSelectMultiple: null
+	,browse: function(type,filter,defaultPath,title) {
+		if(type == null) {
+			type = lime_ui_FileDialogType.OPEN;
+		}
+		this.onCancel.dispatch();
+		return false;
+	}
+	,open: function(filter,defaultPath,title) {
+		this.onCancel.dispatch();
+		return false;
+	}
+	,save: function(data,filter,defaultPath,title,type) {
+		if(type == null) {
+			type = "application/octet-stream";
+		}
+		if(data == null) {
+			this.onCancel.dispatch();
+			return false;
+		}
+		var defaultExtension = "";
+		if(lime_graphics_Image.__isPNG(data)) {
+			type = "image/png";
+			defaultExtension = ".png";
+		} else if(lime_graphics_Image.__isJPG(data)) {
+			type = "image/jpeg";
+			defaultExtension = ".jpg";
+		} else if(lime_graphics_Image.__isGIF(data)) {
+			type = "image/gif";
+			defaultExtension = ".gif";
+		} else if(lime_graphics_Image.__isWebP(data)) {
+			type = "image/webp";
+			defaultExtension = ".webp";
+		}
+		var path = defaultPath != null ? haxe_io_Path.withoutDirectory(defaultPath) : "download" + defaultExtension;
+		var buffer = data.b.bufferValue;
+		buffer = buffer.slice(0,data.length);
+		window.saveAs(new Blob([buffer],{ type : type}),path,true);
+		this.onSave.dispatch(path);
+		return true;
+	}
+	,__class__: lime_ui_FileDialog
+};
+var lime_ui_FileDialogType = $hxEnums["lime.ui.FileDialogType"] = { __ename__:"lime.ui.FileDialogType",__constructs__:null
+	,OPEN: {_hx_name:"OPEN",_hx_index:0,__enum__:"lime.ui.FileDialogType",toString:$estr}
+	,OPEN_MULTIPLE: {_hx_name:"OPEN_MULTIPLE",_hx_index:1,__enum__:"lime.ui.FileDialogType",toString:$estr}
+	,SAVE: {_hx_name:"SAVE",_hx_index:2,__enum__:"lime.ui.FileDialogType",toString:$estr}
+	,OPEN_DIRECTORY: {_hx_name:"OPEN_DIRECTORY",_hx_index:3,__enum__:"lime.ui.FileDialogType",toString:$estr}
+};
+lime_ui_FileDialogType.__constructs__ = [lime_ui_FileDialogType.OPEN,lime_ui_FileDialogType.OPEN_MULTIPLE,lime_ui_FileDialogType.SAVE,lime_ui_FileDialogType.OPEN_DIRECTORY];
 var lime_ui_Gamepad = function(id) {
 	this.onDisconnect = new lime_app__$Event_$Void_$Void();
 	this.onButtonUp = new lime_app__$Event_$lime_$ui_$GamepadButton_$Void();
@@ -73335,7 +73681,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 716915;
+	this.version = 615687;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -75526,6 +75872,20 @@ lime_utils_Preloader.prototype = {
 		}
 	}
 	,__class__: lime_utils_Preloader
+};
+var lime_utils_Resource = {};
+lime_utils_Resource._new = function(size) {
+	if(size == null) {
+		size = 0;
+	}
+	var this1 = new haxe_io_Bytes(new ArrayBuffer(size));
+	return this1;
+};
+lime_utils_Resource.__fromString = function(value) {
+	return haxe_io_Bytes.ofString(value);
+};
+lime_utils_Resource.__toString = function(value) {
+	return value.toString();
 };
 var lime_utils_UInt16Array = {};
 lime_utils_UInt16Array.toArrayBufferView = function(this1) {
@@ -113222,6 +113582,165 @@ openfl_media_Video.prototype = $extend(openfl_display_DisplayObject.prototype,{
 	,__class__: openfl_media_Video
 	,__properties__: $extend(openfl_display_DisplayObject.prototype.__properties__,{get_videoWidth:"get_videoWidth",get_videoHeight:"get_videoHeight"})
 });
+var openfl_net_FileFilter = function(description,extension,macType) {
+	this.description = description;
+	this.extension = extension;
+	this.macType = macType;
+};
+$hxClasses["openfl.net.FileFilter"] = openfl_net_FileFilter;
+openfl_net_FileFilter.__name__ = "openfl.net.FileFilter";
+openfl_net_FileFilter.prototype = {
+	description: null
+	,extension: null
+	,macType: null
+	,__class__: openfl_net_FileFilter
+};
+var openfl_net_FileReference = function() {
+	openfl_events_EventDispatcher.call(this);
+	this.__inputControl = window.document.createElement("input");
+	this.__inputControl.setAttribute("type","file");
+	this.__inputControl.onclick = function(e) {
+		e.cancelBubble = true;
+		e.stopPropagation();
+	};
+};
+$hxClasses["openfl.net.FileReference"] = openfl_net_FileReference;
+openfl_net_FileReference.__name__ = "openfl.net.FileReference";
+openfl_net_FileReference.__super__ = openfl_events_EventDispatcher;
+openfl_net_FileReference.prototype = $extend(openfl_events_EventDispatcher.prototype,{
+	creationDate: null
+	,creator: null
+	,data: null
+	,modificationDate: null
+	,name: null
+	,size: null
+	,type: null
+	,__data: null
+	,__path: null
+	,__urlLoader: null
+	,__inputControl: null
+	,browse: function(typeFilter) {
+		var _gthis = this;
+		this.__data = null;
+		this.__path = null;
+		var filter = null;
+		if(typeFilter != null) {
+			var filters = [];
+			var _g = 0;
+			while(_g < typeFilter.length) {
+				var type = typeFilter[_g];
+				++_g;
+				filters.push(StringTools.replace(StringTools.replace(type.extension,"*.","."),";",","));
+			}
+			filter = filters.join(",");
+		}
+		if(filter != null) {
+			this.__inputControl.setAttribute("accept",filter);
+		}
+		this.__inputControl.onchange = function() {
+			var file = _gthis.__inputControl.files[0];
+			var tmp = new Date(file.lastModified);
+			_gthis.modificationDate = tmp;
+			_gthis.creationDate = _gthis.modificationDate;
+			_gthis.size = file.size;
+			var tmp = haxe_io_Path.extension(file.name);
+			_gthis.type = "." + tmp;
+			_gthis.name = haxe_io_Path.withoutDirectory(file.name);
+			_gthis.__path = file.name;
+			_gthis.dispatchEvent(new openfl_events_Event("select"));
+		};
+		this.__inputControl.click();
+		return true;
+	}
+	,cancel: function() {
+		if(this.__urlLoader != null) {
+			this.__urlLoader.close();
+		}
+	}
+	,download: function(request,defaultFileName) {
+		this.__data = null;
+		this.__path = null;
+		this.__urlLoader = new openfl_net_URLLoader();
+		this.__urlLoader.addEventListener("complete",$bind(this,this.urlLoader_onComplete));
+		this.__urlLoader.addEventListener("ioError",$bind(this,this.urlLoader_onIOError));
+		this.__urlLoader.addEventListener("progress",$bind(this,this.urlLoader_onProgress));
+		this.__urlLoader.load(request);
+		var saveFileDialog = new lime_ui_FileDialog();
+		saveFileDialog.onCancel.add($bind(this,this.saveFileDialog_onCancel));
+		saveFileDialog.onSelect.add($bind(this,this.saveFileDialog_onSelect));
+		saveFileDialog.browse(lime_ui_FileDialogType.SAVE,defaultFileName != null ? haxe_io_Path.extension(defaultFileName) : null,defaultFileName);
+	}
+	,load: function() {
+		var _gthis = this;
+		var file = this.__inputControl.files[0];
+		var reader = new FileReader();
+		reader.onload = function(evt) {
+			_gthis.data = openfl_utils_ByteArray.fromArrayBuffer(evt.target.result);
+			_gthis.openFileDialog_onComplete();
+		};
+		reader.readAsArrayBuffer(file);
+	}
+	,save: function(data,defaultFileName) {
+		this.__data = null;
+		this.__path = null;
+		if(data == null) {
+			return;
+		}
+		if(((data) instanceof openfl_utils_ByteArrayData)) {
+			this.__data = data;
+		} else {
+			var this1 = new openfl_utils_ByteArrayData(0);
+			this.__data = this1;
+			this.__data.writeUTFBytes(Std.string(data));
+		}
+		var saveFileDialog = new lime_ui_FileDialog();
+		saveFileDialog.onCancel.add($bind(this,this.saveFileDialog_onCancel));
+		saveFileDialog.onSave.add($bind(this,this.saveFileDialog_onSave));
+		saveFileDialog.save(this.__data,defaultFileName != null ? haxe_io_Path.extension(defaultFileName) : null,defaultFileName);
+	}
+	,upload: function(request,uploadDataFieldName,testUpload) {
+		if(testUpload == null) {
+			testUpload = false;
+		}
+		if(uploadDataFieldName == null) {
+			uploadDataFieldName = "Filedata";
+		}
+		openfl_utils__$internal_Lib.notImplemented({ fileName : "openfl/net/FileReference.hx", lineNumber : 1286, className : "openfl.net.FileReference", methodName : "upload"});
+	}
+	,openFileDialog_onCancel: function() {
+		this.dispatchEvent(new openfl_events_Event("cancel"));
+	}
+	,openFileDialog_onComplete: function() {
+		this.dispatchEvent(new openfl_events_Event("complete"));
+	}
+	,openFileDialog_onSelect: function(path) {
+		this.name = haxe_io_Path.withoutDirectory(path);
+		this.__path = path;
+		this.dispatchEvent(new openfl_events_Event("select"));
+	}
+	,saveFileDialog_onCancel: function() {
+		this.dispatchEvent(new openfl_events_Event("cancel"));
+	}
+	,saveFileDialog_onSave: function(path) {
+		var _gthis = this;
+		haxe_Timer.delay(function() {
+			_gthis.dispatchEvent(new openfl_events_Event("complete"));
+		},1);
+	}
+	,saveFileDialog_onSelect: function(path) {
+		this.dispatchEvent(new openfl_events_Event("select"));
+	}
+	,urlLoader_onComplete: function(event) {
+		this.dispatchEvent(event);
+	}
+	,urlLoader_onIOError: function(event) {
+		this.dispatchEvent(event);
+	}
+	,urlLoader_onProgress: function(event) {
+		this.dispatchEvent(event);
+	}
+	,__class__: openfl_net_FileReference
+});
 var openfl_net_NetConnection = function() {
 	openfl_events_EventDispatcher.call(this);
 };
@@ -120779,6 +121298,8 @@ lime_media_openal_ALC.EXTENSIONS = 4102;
 lime_media_openal_ALC.ENUMERATE_ALL_EXT = 1;
 lime_media_openal_ALC.DEFAULT_ALL_DEVICES_SPECIFIER = 4114;
 lime_media_openal_ALC.ALL_DEVICES_SPECIFIER = 4115;
+lime_system_BackgroundWorker.MESSAGE_COMPLETE = "__COMPLETE__";
+lime_system_BackgroundWorker.MESSAGE_ERROR = "__ERROR__";
 lime_system_CFFI.__moduleNames = null;
 lime_system_Clipboard.onUpdate = new lime_app__$Event_$Void_$Void();
 lime_system_Sensor.sensorByID = new haxe_ds_IntMap();
